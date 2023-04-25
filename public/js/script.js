@@ -9,11 +9,10 @@ $("#contact-form").validate({
       required: true,
       email: true
     },
-    phone: {
+    password: {
       required: true,
-      digits: true,
-      minlength: 9,
-      maxlength: 10
+      minlength: 8,
+      maxlength: 18
     }
   }
 });

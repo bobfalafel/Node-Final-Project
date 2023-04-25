@@ -10,32 +10,32 @@ mongoose.connect('mongodb://localhost/datas')
 .catch( err => console.error('Could not connect to mongodb', err) );
 
 const contactSchema = Joi.object({
-  name: Joi.string().required().min(2).max(70),
+  username: Joi.string().required().min(6).max(70),
   email: Joi.string().required().email(),
-  phone: Joi.number().integer().min(9),
+  password: Joi.string().required().min(8).max(18),
   submit: Joi.string()
 });
 
 const cardSchema = mongoose.Schema({
-  title: String,
-  article: String,
-  price: Number,
-  tags: [ String ],
-  isPublish: Boolean,
-  createdAt: { type: Date, default: Date.now }
+  bname: String,
+  desc: String,
+  address: String,
+  phone: String,
+  imgUrl: String,
+  ownerId: Number,
+  id: Number
 });
- 
-const Product = mongoose.model('Product', productSchema);
- 
-const product = new Product({
-  title: 'Dell xxy 5 flat',
-  article: 'My text demo article for dell',
-  price: 45,
-  tags: ['computer', 'laptop'],
-  isPublish: true
+
+const userSchema = mongoose.Schema({
+  id: Number,
+  username: String,
+  email: String,
+  password: String,
+  type: Boolean
 });
- 
-product.save().then( (result) => console.log(result) );
+
+const Card = mongoose.model('Card', cardSchema);
+const User = mongoose.model('User', userSchema);
 
 app.engine('handlebars', exphbs({ defaultLayout: 'main' }));
 app.set('view engine', 'handlebars');
@@ -47,15 +47,15 @@ app.get('/', (req, res) => {
   res.render('home', { title: 'Home Page' });
 });
 
-app.get('/contact', (req, res) => {
-  res.render('contact', { title: 'Contact Us' });
+app.get('/signup', (req, res) => {
+  res.render('signup', { title: 'Sign Up' });
 });
 
 
-app.post('/contact', (req, res) => {
+app.post('/signup', (req, res) => {
   const { error, value } = contactSchema.validate(req.body);
   if (error) {
-    res.render('contact-fail', { title: 'Contact Us' });
+    res.render('signup-fail', { title: 'Sign Up' });
   } else {
     res.redirect('/thanks');
   }
