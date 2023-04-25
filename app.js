@@ -9,9 +9,13 @@ cardid = 1;
 
 mongoose.set("strictQuery", false); 
 
-mongoose.connect('mongodb://localhost:27017/cardproject', { useNewUrlParser: true })
-  .then(() => console.log('Connected to MongoDB...'))
-  .catch(err => console.error('Could not connect to MongoDB...', err));
+mongoose.connect('mongodb://127.0.0.1:27017/cardproject')
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch(err => {
+    console.error('Error connecting to MongoDB:', err);
+  });
 
 const contactSchema = Joi.object({
   username: Joi.string().required().min(6).max(70),
@@ -54,6 +58,10 @@ app.get('/', (req, res) => {
 
 app.get('/signup', (req, res) => {
   res.render('signup', { title: 'Sign Up' });
+});
+
+app.get('/login', (req, res) => {
+  res.render('login', { title: 'Log In' });
 });
 
 
