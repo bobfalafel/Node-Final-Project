@@ -1,6 +1,6 @@
 $("#contact-form").validate({
   rules: {
-    name: {
+    username: {
       required: true,
       minlength: 2,
       maxlength: 70

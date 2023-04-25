@@ -4,10 +4,14 @@ const bodyParser = require('body-parser');
 const Joi = require('@hapi/joi');
 const app = express();
 const mongoose = require('mongoose');
- 
-mongoose.connect('mongodb://localhost/datas')
-.then( () => console.log('connecting to mongodb!') )
-.catch( err => console.error('Could not connect to mongodb', err) );
+userid = 1;
+cardid = 1;
+
+mongoose.set("strictQuery", false); 
+
+mongoose.connect('mongodb://localhost:27017/cardproject', { useNewUrlParser: true })
+  .then(() => console.log('Connected to MongoDB...'))
+  .catch(err => console.error('Could not connect to MongoDB...', err));
 
 const contactSchema = Joi.object({
   username: Joi.string().required().min(6).max(70),
@@ -34,6 +38,7 @@ const userSchema = mongoose.Schema({
   type: Boolean
 });
 
+
 const Card = mongoose.model('Card', cardSchema);
 const User = mongoose.model('User', userSchema);
 
@@ -52,12 +57,28 @@ app.get('/signup', (req, res) => {
 });
 
 
-app.post('/signup', (req, res) => {
+app.post('/signup', async (req, res) => {
   const { error, value } = contactSchema.validate(req.body);
   if (error) {
     res.render('signup-fail', { title: 'Sign Up' });
   } else {
-    res.redirect('/thanks');
+    const data = req.body;
+    try{
+      const user = new User({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+        id: userid
+      });
+      await user.save();
+      userid++;
+      res.redirect('/thanks');
+    } catch(err){
+      console.log(err);
+      res.status(422).send({error: err.message});
+    }
+
+    
   }
 });
 
