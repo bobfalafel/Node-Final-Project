@@ -4,10 +4,8 @@ const bodyParser = require('body-parser');
 const Joi = require('@hapi/joi');
 const app = express();
 const mongoose = require('mongoose');
-userid = 1;
-cardid = 1;
 
-mongoose.set("strictQuery", false); 
+mongoose.set("strictQuery", false);
 
 mongoose.connect('mongodb://127.0.0.1:27017/cardproject')
   .then(() => {
@@ -71,22 +69,41 @@ app.post('/signup', async (req, res) => {
     res.render('signup-fail', { title: 'Sign Up' });
   } else {
     const data = req.body;
-    try{
-      const user = new User({
-        username: data.username,
-        email: data.email,
-        password: data.password,
-        id: userid
-      });
-      await user.save();
-      userid++;
-      res.redirect('/thanks');
-    } catch(err){
+    try {
+      const existingUser = await User.findOne({ email: data.email });
+      if (existingUser) {
+        res.status(409).send({ error: 'Email already exists' });
+      } else {
+        const users = await User.find();
+        const user = new User({
+          username: data.username,
+          email: data.email,
+          password: data.password,
+          id: users.length + 1
+        });
+        await user.save();
+        res.redirect('/thanks');
+      }
+    } catch (err) {
       console.log(err);
-      res.status(422).send({error: err.message});
+      res.status(422).send({ error: err.message });
     }
+  }
+});
 
-    
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email, password });
+    if (user) {
+      res.redirect('/');
+      console.log("great success");
+    } else {
+      console.log("bad");
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(422).send({ error: err.message });
   }
 });
 
