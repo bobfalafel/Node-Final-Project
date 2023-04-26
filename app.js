@@ -3,6 +3,7 @@ const exphbs = require('express-handlebars');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const Joi = require('@hapi/joi');
+const auth = require('./middleware/auth');
 const app = express();
 const http = require('http').Server(app);
 const mongoose = require('mongoose');
@@ -54,7 +55,7 @@ const Card = mongoose.model('Card', cardSchema);
 const User = mongoose.model('User', userSchema);
 
 app.use(express.json());
-app.engine('handlebars', exphbs({ defaultLayout: 'main' }));
+app.engine('handlebars', exphbs({ defaultLayout: 'unlogged' }));
 app.set('view engine', 'handlebars');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static('public'));
@@ -135,4 +136,14 @@ app.get('/thanks', (req, res) => {
   res.render('thanks', { title: 'Thanks Page' });
 });
 
+
+
+
+
+
+
+app.use((req, res) => {
+  res.status(404);
+  res.render('page-404');
+});
 app.listen(3000, () => console.log('server run!'));
