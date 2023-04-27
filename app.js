@@ -31,7 +31,8 @@ const cardValSchema = Joi.object({
     desc: Joi.string().min(2).max(1024).required(),
     address: Joi.string().min(2).max(400).required(),
     phone: Joi.string().min(9).max(10).required().regex(/^0[2-9]\d{7,8}$/),
-    imgUrl: Joi.string().min(11).max(1024).required()
+    imgurl: Joi.string().uri().allow(''),
+    submit: Joi.string()
   });
 
 const cardSchema = mongoose.Schema({
@@ -136,7 +137,7 @@ app.post('/login', async (req, res) => {
       const validPass = await bcrypt.compare(req.body.password, user.password)
       if(validPass) {
         const tokentosend = user.generateAuthToken()
-        res.status(200).cookie( 'jwtoken', tokentosend)//.redirect('/');
+        res.status(200).cookie( 'jwtoken', tokentosend);
         res.redirect('/');
       } else {
         res.status(401).render('login-fail', { title: 'Sign Up' });;
@@ -158,16 +159,57 @@ app.get('/thanks', (req, res) => {
 
 app.get('/my-cards', auth, async (req, res) => {
   const loggedUser = await User.findOne({ email: req.user.email });
-  const userCards = Card.find({ownerEmail:loggedUser.email})
-  if(userCards.length==0){
-    res.render('my-cards',{layout:'logged', title: 'your cards',cards:userCards,h1:'Here are your cards:'});
+  //console.log(Card.findOne({ownerEmail:loggedUser.email}));
+  const userCards = await Card.find({ownerEmail:loggedUser.email}).lean();
+  if(userCards.length>0){
+    res.render('cards',{layout:'logged', title: 'your cards',cards:userCards,h1:'Here are your cards:'});
   }
   else{
-    res.render('my-cards',{layout:'logged', title: 'your cards',h1:'Your have no cards!'});
+    res.render('cards',{layout:'logged', title: 'your cards',h1:'Your have no cards!'});
   }
 });
 
+app.get('/cards', auth, async (req, res) => {
+  const userCards = await Card.find().lean();
+  if(userCards.length>0){
+    res.render('cards',{layout:'logged', title: 'your cards',cards:userCards,h1:'Here are your cards:'});
+  }
+  else{
+    res.render('cards',{layout:'logged', title: 'your cards',h1:'Your have no cards!'});
+  }
+});
 
+app.get('/add-card', auth, async (req, res) => {
+  res.render('add-card',{layout:'logged', title: 'add a card'});
+});
+
+app.post('/add-card', auth, async (req, res) => {
+  console.log(req.body);
+  const { error, value } = cardValSchema.validate(req.body);
+  if (error) {
+    console.log(error);
+    res.render('add-card', { title: 'try again' });
+  } else {
+    const data = req.body;
+    try {
+        const cards = await Card.find();
+        const card = new Card({
+          bname: data.bname,
+          desc: data.desc,
+          address: data.address,
+          phone: data.phone,
+          imgUrl: data.imgUrl,
+          ownerEmail: req.user.email,
+          id: cards.length + 1
+        });
+        await card.save();
+        res.render('thanks',{layout:'logged', title: 'thank you'});
+    } catch (err) {
+      console.log(err);
+      res.status(422).send({ error: err.message });
+    }
+  }
+});
 
 
 
