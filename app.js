@@ -2,6 +2,7 @@ const express = require('express');
 const exphbs = require('express-handlebars');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const Joi = require('@hapi/joi');
 const auth = require('./middleware/auth');
 const app = express();
@@ -39,7 +40,7 @@ const cardSchema = mongoose.Schema({
   address: String,
   phone: String,
   imgUrl: String,
-  ownerId: Number,
+  ownerEmail: String,
   id: {type: Number, unique: true}
 });
 
@@ -49,7 +50,10 @@ const userSchema = mongoose.Schema({
   password: String,
   business: Boolean
 });
-
+userSchema.methods.generateAuthToken = function () {
+  const token = jwt.sign({email: this.email }, 'tokenMaster');
+  return token;
+}
 
 const Card = mongoose.model('Card', cardSchema);
 const User = mongoose.model('User', userSchema);
@@ -60,8 +64,29 @@ app.set('view engine', 'handlebars');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static('public'));
 
-app.get('/', (req, res) => {
-  res.render('home', { title: 'Home Page' });
+app.get('/', async (req, res) => {
+  let token = null;
+  try{
+  token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith(' jwtoken='));
+  }
+  catch{
+   token = null;
+  }
+  if (!token){
+    res.render('home', { title: 'Home Page' });
+  }
+  else{
+    try {
+      token = token.split('=')[1];
+      const decoded = jwt.verify(token, 'tokenMaster');
+      req.user = decoded;
+      const loggedUser = await User.findOne({ email: req.user.email });
+      res.render('loggedhome', {layout: 'logged', title: 'Home Page',username: loggedUser.username, email: req.user.email});
+    }
+    catch (ex) {
+      res.status(400).send('Invalid token.');
+    }
+  }
 });
 
 app.get('/signup', (req, res) => {
@@ -94,7 +119,7 @@ app.post('/signup', async (req, res) => {
         const salt = await bcrypt.genSalt();
         user.password = await bcrypt.hash(user.password, salt);
         await user.save();
-        res.redirect('/thanks');
+        res.status(200).redirect('/thanks');
       }
     } catch (err) {
       console.log(err);
@@ -103,11 +128,6 @@ app.post('/signup', async (req, res) => {
   }
 });
 
-userSchema.methods.generateAuthToken = function () {
-  const token = jwt.sign({ _id: this._id, business: this.business }, 'tokenMaster');
-  return token;
-}
-
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -115,25 +135,36 @@ app.post('/login', async (req, res) => {
     if (user) {
       const validPass = await bcrypt.compare(req.body.password, user.password)
       if(validPass) {
-        res.json({ token: user.generateAuthToken() });
+        const tokentosend = user.generateAuthToken()
+        res.status(200).cookie( 'jwtoken', tokentosend)//.redirect('/');
         res.redirect('/');
-        console.log("great success");
       } else {
-        res.render('login-fail', { title: 'Sign Up' });;
+        res.status(401).render('login-fail', { title: 'Sign Up' });;
         console.log("bad");
       }
     } else {
-      res.render('login-fail', { title: 'Sign Up' });;
+      res.status(401).render('login-fail', { title: 'Sign Up' });;
       console.log("bad");
     }
   } catch (err) {
     console.log(err);
-    res.status(422).send({ error: err.message });
+    res.status(422)//.send({ error: err.message });
   }
 });
 
 app.get('/thanks', (req, res) => {
-  res.render('thanks', { title: 'Thanks Page' });
+  res.render('thanks', { title: 'Thank You' });
+});
+
+app.get('/my-cards', auth, async (req, res) => {
+  const loggedUser = await User.findOne({ email: req.user.email });
+  const userCards = Card.find({ownerEmail:loggedUser.email})
+  if(userCards.length==0){
+    res.render('my-cards',{layout:'logged', title: 'your cards',cards:userCards,h1:'Here are your cards:'});
+  }
+  else{
+    res.render('my-cards',{layout:'logged', title: 'your cards',h1:'Your have no cards!'});
+  }
 });
 
 
@@ -143,7 +174,14 @@ app.get('/thanks', (req, res) => {
 
 
 app.use((req, res) => {
-  res.status(404);
-  res.render('page-404');
+  let token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith(' jwtoken='));
+  if (!token){
+    res.status(404);
+    res.render('page-404',{title: '404'});
+  }
+  else{
+    res.status(404);
+    res.render('page-404',{layout:'logged', title: '404'});
+  }
 });
 app.listen(3000, () => console.log('server run!'));

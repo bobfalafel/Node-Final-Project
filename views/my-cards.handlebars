@@ -1,0 +1,14 @@
+<ul>
+    <h1>{{h1}}</h1>
+    {{#each cards}}
+    <div class="card">
+        <img src="{{imgUrl}}" alt="{{bname}}">
+        <div class="card-body">
+            <h5 class="card-title">{{bname}}</h5>
+            <p class="card-text">{{desc}}</p>
+            <p class="card-text">{{address}}</p>
+            <p class="card-text">{{phone}}</p>
+        </div>
+    </div>
+    {{/each}}
+</ul>

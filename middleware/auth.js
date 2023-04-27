@@ -1,10 +1,11 @@
 const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
-  const token = req.header('x-auth-token');
+  let token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith(' jwtoken='));
   if (!token) return res.status(401).send('Access denied. No token provided.');
 
   try {
+    token = token.split('=')[1];
     const decoded = jwt.verify(token, 'tokenMaster');
     req.user = decoded;
     next();
