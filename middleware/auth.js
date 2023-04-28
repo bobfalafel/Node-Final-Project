@@ -2,6 +2,9 @@ const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
   let token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith(' jwtoken='));
+  if(!token){
+    token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith('jwtoken='));
+  }
   if (!token) return res.status(401).send('Access denied. No token provided.');
 
   try {

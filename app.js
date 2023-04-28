@@ -8,6 +8,7 @@ const auth = require('./middleware/auth');
 const app = express();
 const http = require('http').Server(app);
 const mongoose = require('mongoose');
+const { id } = require('@hapi/joi/lib/base');
 
 mongoose.set("strictQuery", false);
 
@@ -68,7 +69,10 @@ app.use(express.static('public'));
 app.get('/', async (req, res) => {
   let token = null;
   try{
-  token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith(' jwtoken='));
+    token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith(' jwtoken='));
+    if(!token){
+      token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith('jwtoken='));
+    }
   }
   catch{
    token = null;
@@ -102,6 +106,7 @@ app.get('/login', (req, res) => {
 app.post('/signup', async (req, res) => {
   const { error, value } = userValSchema.validate(req.body);
   if (error) {
+    console.log(error);
     res.render('signup-fail', { title: 'Sign Up' });
   } else {
     const data = req.body;
@@ -138,6 +143,7 @@ app.post('/login', async (req, res) => {
       if(validPass) {
         const tokentosend = user.generateAuthToken()
         res.status(200).cookie( 'jwtoken', tokentosend);
+        console.log(tokentosend);
         res.redirect('/');
       } else {
         res.status(401).render('login-fail', { title: 'Sign Up' });;
@@ -159,13 +165,12 @@ app.get('/thanks', (req, res) => {
 
 app.get('/my-cards', auth, async (req, res) => {
   const loggedUser = await User.findOne({ email: req.user.email });
-  //console.log(Card.findOne({ownerEmail:loggedUser.email}));
   const userCards = await Card.find({ownerEmail:loggedUser.email}).lean();
   if(userCards.length>0){
-    res.render('cards',{layout:'logged', title: 'your cards',cards:userCards,h1:'Here are your cards:'});
+    res.render('my-cards',{layout:'logged', title: 'your cards',cards:userCards,h1:'Here are your cards:'});
   }
   else{
-    res.render('cards',{layout:'logged', title: 'your cards',h1:'Your have no cards!'});
+    res.render('my-cards',{layout:'logged', title: 'your cards',h1:'Your have no cards!'});
   }
 });
 
@@ -192,13 +197,14 @@ app.post('/add-card', auth, async (req, res) => {
   } else {
     const data = req.body;
     try {
+      console.log(data.imgurl);
         const cards = await Card.find();
         const card = new Card({
           bname: data.bname,
           desc: data.desc,
           address: data.address,
           phone: data.phone,
-          imgUrl: data.imgUrl,
+          imgUrl: data.imgurl,
           ownerEmail: req.user.email,
           id: cards.length + 1
         });
@@ -211,12 +217,40 @@ app.post('/add-card', auth, async (req, res) => {
   }
 });
 
+app.get('/cards/:id/edit', async (req, res) => {
+  const cardToEdit = await Card.findOne({id: parseInt(req.params.id)});
+  res.render('edit-card', {layout:'logged', title:'edit card',bname: cardToEdit.bname, desc: cardToEdit.desc, address: cardToEdit.address, phone: cardToEdit.phone, imgUrl: cardToEdit.imgUrl});
+});
 
+app.post('/cards/:id/edit', async (req, res) => {
+  console.log('here');
+  const cardToEdit = await Card.findOne({id: parseInt(req.params.id)});
+  console.log(cardToEdit);
+  const data = req.body;
+  console.log(data);
+  const card = new Card({
+    bname: data.bname,
+    desc: data.desc,
+    address: data.address,
+    phone: data.phone,
+    imgUrl: data.imgUrl,
+    ownerEmail: cardToEdit.ownerEmail
+  });
+  await Card.findOneAndUpdate({id: parseInt(req.params.id)},{bname: card.bname, desc: card.desc, address: card.address, phone: card.phone, imgUrl: card.imgUrl});
+  res.redirect('/my-cards');
+});
 
+app.get('/cards/:id/delete', async (req, res) => {
+  await Card.findOneAndDelete({id:parseInt(req.params.id)});
+  res.redirect('/my-cards');
+});
 
 
 app.use((req, res) => {
   let token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith(' jwtoken='));
+  if(!token){
+    token = req.headers.cookie.split(';').find(cookie=>cookie.startsWith('jwtoken='));
+  }
   if (!token){
     res.status(404);
     res.render('page-404',{title: '404'});
